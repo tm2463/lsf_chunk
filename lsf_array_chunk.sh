@@ -113,6 +113,7 @@ for i in $(seq 1 $N_CHUNKS); do
 done
 
 export CPUS
+export OUTDIR
 MEM=$(( ${MEMORY} * 1024 )) #convert to Mb
 bsub -J "${JOB_TITLE}[1-${N_CHUNKS}]%$CONCURRENCY" \
     -R "select[mem>${MEM}] rusage[mem=${MEM}] span[hosts=1]" \

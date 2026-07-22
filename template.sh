@@ -3,7 +3,7 @@
 set -uo pipefail
 
 BATCH_FILE=${1}
-OUTDIR="$(dirname "$BATCH_FILE")"
+OUTDIR="${OUTDIR:-1}"
 CPUS="${CPUS:-1}"
 
 if [[ ! -f "$BATCH_FILE" ]]; then
