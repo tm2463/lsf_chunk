@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 MAIN_LIST=""
 OUTDIR=""
 BATCH_SIZE=
@@ -94,11 +96,68 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# === Validate required arguments ===
+missing=()
+[[ -z "$MAIN_LIST"  ]] && missing+=("--main_list")
+[[ -z "$OUTDIR"     ]] && missing+=("--outdir")
+[[ -z "$BATCH_SIZE" ]] && missing+=("--batch_size")
+[[ -z "$CONCURRENCY" ]] && missing+=("--concurrency")
+[[ -z "$JOB_TITLE"  ]] && missing+=("--job_title")
+[[ -z "$MEMORY"     ]] && missing+=("--memory")
+[[ -z "$CPUS"       ]] && missing+=("--cpus")
+[[ -z "$QUEUE"      ]] && missing+=("--queue")
+[[ -z "$LOG_FILE"   ]] && missing+=("--log_file")
+
+if (( ${#missing[@]} > 0 )); then
+    echo "Error: missing required argument(s): ${missing[*]}" >&2
+    exit 1
+fi
+
+if [[ ! -f "$MAIN_LIST" ]]; then
+    echo "Error: main list not found: $MAIN_LIST" >&2
+    exit 1
+fi
+
+if [[ ! -x "$SCRIPT_PATH" ]]; then
+    echo "Error: executor script not found or not executable: $SCRIPT_PATH" >&2
+    exit 1
+fi
+
+if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] || (( BATCH_SIZE == 0 )); then
+    echo "Error: --batch_size must be a positive integer" >&2
+    exit 1
+fi
+
+if ! [[ "$MEMORY" =~ ^[0-9]+$ ]]; then
+    echo "Error: --memory must be a positive integer (Gb)" >&2
+    exit 1
+fi
+
+if ! [[ "$CPUS" =~ ^[0-9]+$ ]]; then
+    echo "Error: --cpus must be a positive integer" >&2
+    exit 1
+fi
+
+if ! [[ "$CONCURRENCY" =~ ^[0-9]+$ ]]; then
+    echo "Error: --concurrency must be a positive integer" >&2
+    exit 1
+fi
+
 mkdir -p "$OUTDIR"
 
-N_JOBS=$(wc -l < $MAIN_LIST)
+# === Chunk the main list ===
+
+N_JOBS=$(grep -c '' "$MAIN_LIST")
+
+if (( N_JOBS == 0 )); then
+    echo "Error: main list is empty: $MAIN_LIST" >&2
+    exit 1
+fi
+
 N_CHUNKS=$(( ($N_JOBS + $BATCH_SIZE - 1) / $BATCH_SIZE ))
 BATCH_LIST=${OUTDIR}/batch_list.txt
+
+# === Create the batch list ===
 
 > "$BATCH_LIST"
 for i in $(seq 1 $N_CHUNKS); do
@@ -112,9 +171,12 @@ for i in $(seq 1 $N_CHUNKS); do
     echo "$BATCH_FILE" >> $BATCH_LIST
 done
 
+# === Submit the array ===
+
 export CPUS
 export OUTDIR
 MEM=$(( ${MEMORY} * 1024 )) #convert to Mb
+
 bsub -J "${JOB_TITLE}[1-${N_CHUNKS}]%$CONCURRENCY" \
     -R "select[mem>${MEM}] rusage[mem=${MEM}] span[hosts=1]" \
     -M ${MEM} \
