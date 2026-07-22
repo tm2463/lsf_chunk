@@ -21,7 +21,7 @@ Options:
   -b, --batch_size                          Size of batches to be submitted
   -c, --concurrency                         How many batches to process at once
   -j, --job_title                           Name of job to be submitted
-  -s, --script                              Path to executor script
+  -s, --executor_script                     Path to executor script
   -M, --memory                              Amount of memory to request (Gb)
   -C, --cpus                                No. CPUs
   -q, --queue                               Queue to which jobs are submitted
@@ -72,7 +72,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -l|--log_file)
-            LOG="$2"
+            LOG_FILE="$2"
             shift 2
             ;;
         -h|--help)
