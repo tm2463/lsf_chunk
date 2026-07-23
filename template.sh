@@ -16,6 +16,7 @@ process_item() {
 
     # --- EXAMPLE: replace with your real command ---
     sylph sketch -1 "${cols[1]}" -2 "${cols[2]}" -d "$OUTDIR" -t "$CPUS"
+    
     local status=$?
 
     return "$status"
